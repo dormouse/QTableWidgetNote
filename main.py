@@ -1,9 +1,16 @@
 import logging
 
 from PyQt5.QtCore import (Qt)
-from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QMainWindow,
-                             QTableWidget, QTableWidgetItem)
-
+from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QHBoxLayout,
+                             QMainWindow,
+                             QTableWidget, QTableWidgetItem,
+                             QWidget)
+from PyQt5.QtWidgets import (QApplication, QComboBox, QDialog,
+        QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout,
+        QLabel, QLineEdit, QMenu, QMenuBar, QPushButton, QSpinBox, QTextEdit,
+        QVBoxLayout)
+from PyQt5.QtGui import (QBrush, QColor, QDrag, QImage, QPainter, QPen,
+        QPixmap, QTransform)
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)s %(levelname)s %(message)s')
 
@@ -51,61 +58,108 @@ class MyTable(QTableWidget):
     def dragMoveEvent(self, e):
         e.accept()
 
+class ImageWidgetLabel(QLabel):
 
-class MainWindow(QMainWindow):
+    def __init__(self, imagePath, parent=None):
+        super(ImageWidgetLabel, self).__init__(parent)
+        pic = QPixmap(imagePath)
+        self.setPixmap(pic)
+
+class ImageWidget(QWidget):
+
+    def __init__(self, imagePath, parent):
+        super(ImageWidget, self).__init__(parent)
+        self.picture = QPixmap(imagePath)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.drawPixmap(0, 0, self.picture)
+
+class MainWindow(QWidget):
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.createActions()
-        self.createMenus()
+        self.log = logging.getLogger(__name__)
+        self.createTableWidgets()
+        self.createVGroupBox()
+        self.InitTableData(self.tableUp)
+        self.InitTableData(self.tableDown)
+        mainLayout = QVBoxLayout()
+        mainLayout.addWidget(self.tableUp)
+        mainLayout.addWidget(self.tableDown)
+        mainLayout.addWidget(self.vGroupBox)
+        self.setLayout(mainLayout)
+        self.resize(800, 600)
 
-        self.tw = MyTable(4, 6)
-        self.addData()
+    def createVGroupBox(self):
+        self.vGroupBox = QGroupBox("Function Buttons")
+        layout = QVBoxLayout()
 
-        self.resize(800, 200)
-        self.setCentralWidget(self.tw)
+        buttons = [
+            dict(label="Set Header", func=self.setHeader),
+            dict(label="Switch Header", func=self.switchHeader),
+            dict(label="Show Image", func=self.showImage),
+        ]
 
-    def createActions(self):
-        self.changeColsAct = QAction("改变列数", self, triggered=self.changeCols)
-        self.setHeaderAct = QAction("设置表头", self, triggered=self.setHeader)
-        self.switchHeaderAct = QAction("开关表头", self, triggered=self.switchHeader)
+        for button in buttons:
+            pushButton = QPushButton(button['label'])
+            pushButton.clicked.connect(button['func'])
+            layout.addWidget(pushButton)
 
-        self.exitAct = QAction("E&xit", self, shortcut="Ctrl+Q", triggered=self.close)
+        self.vGroupBox.setLayout(layout)
 
-    def createMenus(self):
-        self.fileMenu = self.menuBar().addMenu("&File")
-        self.fileMenu.addAction(self.exitAct)
+    def createTableWidgets(self):
+        """ create QTableWidget
+        There is two way to creat a QTableWidget:
+        1. QTableWiget(rows, cols)
+        2. table = QTableWidget()
+           table.setRowCount(rows)
+           table.setColumnCount(cols)
+        """
+        rows = 4
+        cols = 5
+        # Way one
+        self.tableUp = MyTable(rows, cols)
+        # Way tow
+        self.tableDown = MyTable()
+        self.tableDown.setRowCount(rows)
+        self.tableDown.setColumnCount(cols)
 
-        self.editMenu = self.menuBar().addMenu("&Edit")
-        self.editMenu.addAction(self.setHeaderAct)
-        self.editMenu.addAction(self.switchHeaderAct)
-        self.editMenu.addAction(self.changeColsAct)
-
-    def addData(self):
+    def InitTableData(self, table):
         data = [
             ["Jan", "Dormouse"],
             ["Feb", "Young"]
         ]
         for row_index, row_data in enumerate(data):
             for col_index, data in enumerate(row_data):
-                self.tw.setItem(row_index, col_index, QTableWidgetItem(data))
+                table.setItem(row_index, col_index, QTableWidgetItem(data))
 
     def changeCols(self):
-        self.tw.setColumnCount(3)
+        self.tableUp.setColumnCount(3)
 
     def setHeader(self):
-        hHeader = ['月份', '姓名']
-        vHeader = ['一', '二', '三']
-        self.tw.setHorizontalHeaderLabels(hHeader)
-        self.tw.setVerticalHeaderLabels(vHeader)
+        hHeader = ['Month', 'Name']
+        vHeader = ['One', 'two', 'three']
+        self.tableUp.setHorizontalHeaderLabels(hHeader)
+        self.tableUp.setVerticalHeaderLabels(vHeader)
 
-        self.tw.setHorizontalHeaderItem(2, QTableWidgetItem("备注"))
-        self.tw.setVerticalHeaderItem(3, QTableWidgetItem("第四"))
+        self.tableUp.setHorizontalHeaderItem(2, QTableWidgetItem("Memo"))
+        self.tableUp.setVerticalHeaderItem(3, QTableWidgetItem("The Fourth"))
+
+    def showImage(self):
+        self.log.debug("show image")
+        imagePath = 'images/hands.jpg'
+        image = ImageWidget(imagePath, self)
+        self.tableUp.setCellWidget(2,3,image)
+
+        label = ImageWidgetLabel(imagePath, self)
+        self.tableUp.setCellWidget(2,4,label)
+
 
     def switchHeader(self):
-        view = self.tw.horizontalHeader()
+        view = self.tableUp.horizontalHeader()
         view.setVisible(not view.isVisible())
 
-        view = self.tw.verticalHeader()
+        view = self.tableUp.verticalHeader()
         view.setVisible(not view.isVisible())
 
 
