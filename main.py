@@ -6,13 +6,22 @@ from PyQt5.QtWidgets import (QAbstractItemView, QAction, QApplication, QHBoxLayo
                              QTableWidget, QTableWidgetItem,
                              QWidget)
 from PyQt5.QtWidgets import (QApplication, QComboBox, QDialog,
-        QDialogButtonBox, QFormLayout, QGridLayout, QGroupBox, QHBoxLayout,
-        QLabel, QLineEdit, QMenu, QMenuBar, QPushButton, QSpinBox, QTextEdit,
-        QVBoxLayout)
+                             QDialogButtonBox, QFormLayout, QGridLayout,
+                             QGroupBox, QHBoxLayout,
+                             QLabel, QLineEdit, QMenu, QMenuBar, QPushButton,
+                             QStyleFactory, QSpinBox, QTextEdit,
+                             QVBoxLayout)
 from PyQt5.QtGui import (QBrush, QColor, QDrag, QImage, QPainter, QPen,
-        QPixmap, QTransform)
+                         QPixmap, QTransform)
+
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)s %(levelname)s %(message)s')
+
+__author__ = "Dormouse Young <dormouse.young@gmail.com>"
+__status__ = "test"
+__version__ = "0.1.1"
+__create__ = "Jan 1 2017"
+__modify__ = "Jan 7 2017"
 
 
 class MyTable(QTableWidget):
@@ -24,7 +33,12 @@ class MyTable(QTableWidget):
         self.setDragEnabled(True)
         self.viewport().setAcceptDrops(True)
         self.setDragDropOverwriteMode(False)
+
+        # setDropIndicatorShown not active under OSX
         self.setDropIndicatorShown(True)
+        # so let's DIY
+        self.oldItem = None
+        self.oldColor = None
 
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         # self.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -56,17 +70,25 @@ class MyTable(QTableWidget):
         e.accept()
 
     def dragMoveEvent(self, e):
+        index = self.indexAt(e.pos())
+        newItem = self.horizontalHeaderItem(index.column())
+        if self.oldItem:
+            self.oldItem.setBackground(self.oldColor)
+        if newItem:
+            self.oldItem = newItem
+            self.oldColor = newItem.background()
+            newItem.setBackground(QColor(Qt.red))
         e.accept()
 
-class ImageWidgetLabel(QLabel):
 
+class ImageWidgetLabel(QLabel):
     def __init__(self, imagePath, parent=None):
         super(ImageWidgetLabel, self).__init__(parent)
         pic = QPixmap(imagePath)
         self.setPixmap(pic)
 
-class ImageWidget(QWidget):
 
+class ImageWidget(QWidget):
     def __init__(self, imagePath, parent):
         super(ImageWidget, self).__init__(parent)
         self.picture = QPixmap(imagePath)
@@ -74,6 +96,7 @@ class ImageWidget(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.drawPixmap(0, 0, self.picture)
+
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -133,6 +156,9 @@ class MainWindow(QWidget):
             for col_index, data in enumerate(row_data):
                 table.setItem(row_index, col_index, QTableWidgetItem(data))
 
+        table.item(1, 0).setBackground(QColor(125, 125, 125))
+        print(type(table.item(1,0)))
+
     def changeCols(self):
         self.tableUp.setColumnCount(3)
 
@@ -145,15 +171,30 @@ class MainWindow(QWidget):
         self.tableUp.setHorizontalHeaderItem(2, QTableWidgetItem("Memo"))
         self.tableUp.setVerticalHeaderItem(3, QTableWidgetItem("The Fourth"))
 
+        item1 = QTableWidgetItem('red')
+        item1.setBackground(QColor(255, 0, 0))
+        self.tableUp.setHorizontalHeaderItem(4, item1)
+
+        memoHeaderItem = self.tableUp.horizontalHeaderItem(0)
+        print(type(memoHeaderItem))
+        print(memoHeaderItem.text())
+        print(memoHeaderItem.background())
+        print(memoHeaderItem.background().color().red())
+        print(memoHeaderItem.background().color().green())
+        print(memoHeaderItem.background().color().blue())
+        memoHeaderItem.setBackground(QBrush(QColor(126,125,12)))
+        print(memoHeaderItem.background().color().red())
+        print(memoHeaderItem.background().color().green())
+        print(memoHeaderItem.background().color().blue())
+
     def showImage(self):
         self.log.debug("show image")
         imagePath = 'images/hands.jpg'
         image = ImageWidget(imagePath, self)
-        self.tableUp.setCellWidget(2,3,image)
+        self.tableUp.setCellWidget(2, 3, image)
 
         label = ImageWidgetLabel(imagePath, self)
-        self.tableUp.setCellWidget(2,4,label)
-
+        self.tableUp.setCellWidget(2, 4, label)
 
     def switchHeader(self):
         view = self.tableUp.horizontalHeader()
@@ -167,6 +208,8 @@ if __name__ == '__main__':
     import sys
 
     app = QApplication(sys.argv)
+    # use "Fusion" style in OSX can show color header
+    app.setStyle(QStyleFactory.create('Fusion'))
     mainWin = MainWindow()
     mainWin.show()
     sys.exit(app.exec_())
